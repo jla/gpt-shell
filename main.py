@@ -22,6 +22,8 @@ At the end, you will output an Answer to the user.
 
 Install any software you need.
 
+If the output of a shell command is not needed send it to /dev/null
+
 Your available actions are:
 
 shell:
