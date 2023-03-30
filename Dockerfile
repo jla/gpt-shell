@@ -9,6 +9,6 @@ RUN apt-get update && apt-get -y install sudo
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY main.py ./
+COPY main.py utils.py ./
 
 CMD [ "python", "./main.py" ]

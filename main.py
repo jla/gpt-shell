@@ -7,6 +7,8 @@ from rich.panel import Panel
 from rich.text import Text
 from rich.prompt import Prompt
 
+import utils
+
 if not os.environ.get('OPENAI_API_KEY'):
     raise Exception('OPENAI_API_KEY environment variable not set')
 
@@ -35,7 +37,9 @@ e.g. eval: 1 + 1
 Evaluate a python expression usign eval().
 
 exec:
-e.g. exec: print('Hello World')
+e.g. exec: ```python
+print('Hello World')
+```
 Execute a python statement using exec().
 
 
@@ -100,7 +104,7 @@ def query(query):
     
         console.print(Panel(response, title="GPT", title_align="left", border_style="green"))
         messages.append(('assistant', response))
-        lines = [line.strip() for line in response.splitlines() if line.strip()]
+        lines = iter([line for line in response.splitlines() if line.strip()])
         action = None
         params = None
         for line in lines:
@@ -116,11 +120,19 @@ def query(query):
                     except Exception as e:
                         output = str(e)
                 elif action == 'exec':
-                    try:
-                        exec(params)
-                        output = 'Success'
-                    except Exception as e:
-                        output = str(e)
+                    if params.strip() == '```python':
+                        code = utils.extract_code(lines)
+                        if code is None:
+                            output = 'Invalid Action: Code block must start with ```python'
+                        else:
+                            stdout, stderr, result = utils.exec_code(code)
+                            output = f"\nstdout:\n{stdout}\nstderr:\n{stderr}\n"
+                            if isinstance(result, Exception):
+                                output += f'exception:\n{result}'
+                            else:
+                                output += f'return:\n{result}'
+                    else:
+                        output = 'Invalid Action: Code block must start with ```python'
                 else:
                     output = f'Unknown action: {action}'
                 console.print(Panel('Observation: ' + output.strip(), title="Shell", title_align="left", border_style="blue"))
