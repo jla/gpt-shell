@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import subprocess
 import openai
@@ -109,6 +110,12 @@ def query(query):
         params = None
         for line in lines:
             if line.startswith('Action:'):
+                if not re.match(r'^Action:\s*(?:shell|eval|exec)\s*:\s.*', line):
+                    msg = "Observation: Invalid 'Action' format"
+                    console.print(Panel(msg, title="Shell", title_align="left", border_style="red"))
+                    messages.append(('user', msg))
+                    break
+
                 _, action, params = [p.strip() for p in line.split(':', 2)]
                 if action == 'shell':
                     ret = subprocess.run(params, shell=True, text=True, capture_output=True)
