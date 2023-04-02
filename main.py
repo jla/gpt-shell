@@ -83,13 +83,17 @@ MAX_ITERATIONS = 10
 PS1 ='GPT-Shell> '
 
 console = Console()
+messages=[('system', PROMPT)]
 
 def prompt(default=None):
     query(Prompt.ask(Text(PS1, style='bold dark_green'), default=default))
 
 def query(query):
     if not query: return
-    messages=[('system', PROMPT),('user', 'Question: ' + query)]
+    if query.strip()[0] != '|': # Reset conversation
+        messages.clear()
+        messages.append(('system', PROMPT))
+    messages.append(('user', 'Question: ' + query))
 
     itercount = 0
     while itercount < MAX_ITERATIONS:
