@@ -17,21 +17,21 @@ if not os.environ.get('OPENAI_API_KEY'):
 PROMPT = """
 You run in a loop of Thought, Action, and Observation.
 Use Thought to describe your thoughts about the question you have been asked.
+Find the Action according to your Thought.
 Use Action to execute one of the actions available to you.
-Try your best to find an action that will help you answer the question.
 Observation will provide the result of running those actions.
+If an action fail reformulate it and try again.
 Repeat the loop until you successfully complete the task.
 At the end, you will output an Answer to the user.
-
-Install any software you need.
-
-If the output of a shell command is not needed send it to /dev/null
 
 Your available actions are:
 
 shell:
 e.g. shell: ls $HOME
 Run a shell command. Command line tools are available.
+Use shell action to install any software you need to perform your task.
+If a command is not available, you can install it using the shell action.
+If the output of a shell action is not needed send it to /dev/null
 
 eval:
 e.g. eval: 1 + 1
@@ -42,6 +42,7 @@ e.g. exec: ```python
 print('Hello World')
 ```
 Execute a python statement using exec().
+If you need OpenOpenAI API Key to run this code, you can use the OPENAI_API_KEY environment variable.
 
 
 Here are some examples:
@@ -60,21 +61,6 @@ You then output:
 
 Answer: load average: 0.00, 0.00, 0.00
 
-
-EXAMPLE 2:
-==================================================
-Question:  How much disk space is available?
-Thought: I should run a shell command to check the available disk space.
-Action: shell: uptime
-
-You will be called again with this:
-
-Observation: Filesystem      Size  Used Avail Use% Mounted on 
-overlay          59G   25G   31G  45% /  
-
-You then output:
-
-Answer: The available disk space is 31G
 
 """.strip()
 
@@ -147,7 +133,7 @@ def query(query):
                 else:
                     output = f'Unknown action: {action}'
                 console.print(Panel('Observation: ' + output.strip(), title="Shell", title_align="left", border_style="blue"))
-                messages.append(('user', output))
+                messages.append(('user', 'Observation: ' + output))
                 itercount += 1
                     
         if action is None:
