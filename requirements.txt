@@ -1,2 +1,3 @@
 openai==0.27.2
+pandas==1.5.3
 rich==13.3.2

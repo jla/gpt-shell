@@ -8,6 +8,7 @@ from rich.panel import Panel
 from rich.text import Text
 from rich.prompt import Prompt
 
+import memory
 import utils
 
 if not os.environ.get('OPENAI_API_KEY'):
@@ -17,6 +18,7 @@ if not os.environ.get('OPENAI_API_KEY'):
 PROMPT = """
 You run in a loop of Thought, Action, and Observation.
 Use Thought to describe your thoughts about the question you have been asked.
+Memories will be provided to you if they are related to the question.
 Find the Action according to your Thought.
 Use Action to execute one of the actions available to you.
 Observation will provide the result of running those actions.
@@ -81,6 +83,12 @@ def query(query):
         messages.append(('system', PROMPT))
     messages.append(('user', 'Question: ' + query))
 
+    # Find related memories
+    memories = memory.search(query)
+    if memories:
+        messages.append(('user', 'Memories: ' + query))
+        console.print(Panel(memories, title="Memory: Search", title_align="left", border_style="grey50"))
+
     itercount = 0
     while itercount < MAX_ITERATIONS:
         response = openai.ChatCompletion.create(
@@ -91,6 +99,8 @@ def query(query):
         # Search for the final response
         if response.startswith('Answer:'):
             console.print(Panel(response[7:].strip(), title="GPT Response", title_align="left", border_style="green"))
+            memories = memory.store(messages)
+            console.print(Panel(memories, title="Memory: Store", title_align="left", border_style="grey50"))
             break
     
         console.print(Panel(response, title="GPT", title_align="left", border_style="green"))
@@ -104,6 +114,7 @@ def query(query):
                     msg = "Observation: Invalid 'Action' format"
                     console.print(Panel(msg, title="Shell", title_align="left", border_style="red"))
                     messages.append(('user', msg))
+                    action = False
                     break
 
                 _, action, params = [p.strip() for p in line.split(':', 2)]
