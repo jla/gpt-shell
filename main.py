@@ -2,6 +2,8 @@ import os
 import re
 import sys
 import subprocess
+import requests
+import shutil
 import openai
 from rich.console import Console
 from rich.panel import Panel
@@ -37,7 +39,7 @@ If the output of a shell action is not needed send it to /dev/null
 
 eval:
 e.g. eval: 1 + 1
-Evaluate a python expression usign eval().
+Evaluate a python expression using eval().
 
 exec:
 e.g. exec: ```python
@@ -46,6 +48,15 @@ print('Hello World')
 Execute a python statement using exec().
 If you need OpenOpenAI API Key to run this code, you can use the OPENAI_API_KEY environment variable.
 
+http_request:
+e.g. http_request: GET https://example.com
+Perform an HTTP request using the specified method (GET, POST, PUT, DELETE) and URL. You can provide data for POST and PUT requests.
+For example, http_request: POST https://example.com {"key": "value"}
+
+file_operations:
+e.g. file_operations: create newfile.txt
+Perform file operations such as create, copy, move, or delete. 
+For example, file_operations: copy src.txt dest.txt
 
 Here are some examples:
 
@@ -110,7 +121,7 @@ def query(query):
         params = None
         for line in lines:
             if line.startswith('Action:'):
-                if not re.match(r'^Action:\s*(?:shell|eval|exec)\s*:\s.*', line):
+                if not re.match(r'^Action:\s*(?:shell|eval|exec|http_request|file_operations)\s*:\s.*', line):
                     msg = "Observation: Invalid 'Action' format"
                     console.print(Panel(msg, title="Shell", title_align="left", border_style="red"))
                     messages.append(('user', msg))
@@ -141,6 +152,49 @@ def query(query):
                                 output += f'return:\n{result}'
                     else:
                         output = 'Invalid Action: Code block must start with ```python'
+                elif action == 'http_request':
+                    try:
+                        method, url, *data = params.split(' ', 2)
+                        if method.upper() in ['GET', 'POST', 'PUT', 'DELETE']:
+                            if method.upper() == 'GET':
+                                response = requests.get(url)
+                            elif method.upper() == 'POST':
+                                response = requests.post(url, data=data[0] if data else None)
+                            elif method.upper() == 'PUT':
+                                response = requests.put(url, data=data[0] if data else None)
+                            elif method.upper() == 'DELETE':
+                                response = requests.delete(url)
+                            else:
+                                response = requests.request(method.upper(), url, data=data[0] if data else None)
+                            output = f'Status code: {response.status_code}\nContent:\n{response.text}'
+                        else:
+                            output = f'Unsupported HTTP method: {method}'
+                    except Exception as e:
+                        output = str(e)
+                elif action == 'file_operations':
+                    try:
+                        operation, *params = params.split(' ', 1)
+                        if operation in ['create', 'copy', 'move', 'delete']:
+                            # Perform file operation
+                            if operation == 'create':
+                                with open(params[0], 'w') as f:
+                                    f.write('')
+                                output = f"File created: {params[0]}"
+                            elif operation == 'copy':
+                                src, dest = params[0].split(' ')
+                                shutil.copy(src, dest)
+                                output = f"File copied from {src} to {dest}"
+                            elif operation == 'move':
+                                src, dest = params[0].split(' ')
+                                shutil.move(src, dest)
+                                output = f"File moved from {src} to {dest}"
+                            elif operation == 'delete':
+                                os.remove(params[0])
+                                output = f"File deleted: {params[0]}"
+                        else:
+                            output = f'Unsupported file operation: {operation}'
+                    except Exception as e:
+                        output = str(e)  
                 else:
                     output = f'Unknown action: {action}'
                 console.print(Panel('Observation: ' + output.strip(), title="Shell", title_align="left", border_style="blue"))
